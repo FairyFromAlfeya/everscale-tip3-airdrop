@@ -1,0 +1,146 @@
+pragma ever-solidity 0.62.0;
+
+pragma AbiHeader time;
+pragma AbiHeader expire;
+pragma AbiHeader pubkey;
+
+import "@broxus/ever-contracts/contracts/access/abstract/Ownable.tsol";
+import "@broxus/ever-contracts/contracts/libraries/UtilityGas.tsol";
+
+import "@broxus/tip3/contracts/interfaces/ITokenRoot.tsol";
+import "@broxus/tip3/contracts/interfaces/ITokenWallet.tsol";
+
+contract SimpleBatchTip3Airdrop is Ownable {
+    uint32 private static _nonce;
+
+    uint8 constant TOKEN_DECIMALS = 9;
+    uint128 constant TOTAL = 50_000_000_000;
+    uint128 constant USERS_COUNT = 32_554;
+    uint128 constant AMOUNT_PER_USER = (TOTAL * uint128(10) ** TOKEN_DECIMALS) / USERS_COUNT;
+
+    address public tokenRoot;
+    address public tokenWallet;
+
+    modifier onlyTokenRoot() {
+        require(tokenRoot.value != 0 && msg.sender == tokenRoot);
+        _;
+    }
+
+    modifier onlyOwnerOrSelf() {
+        require(msg.sender.value != 0 && (msg.sender == address(this) || msg.sender == _getOwnerInternal()));
+        _;
+    }
+
+    function _getTargetBalanceInternal()
+        internal
+        view
+        override
+        returns (uint128)
+    {
+        return UtilityGas.INITIAL_BALANCE;
+    }
+
+    constructor(
+        address _initialOwner,
+        address _initialTokenRoot
+    ) public reserveAndAccept(_getTargetBalanceInternal()) {
+        _setOwnerInternal(_initialOwner);
+
+        tokenRoot = _initialTokenRoot;
+
+        ITokenRoot(_initialTokenRoot)
+            .deployWallet{
+                value: 0,
+                flag: MsgFlag.ALL_NOT_RESERVED,
+                callback: SimpleBatchTip3Airdrop.onTokenWallet
+            }(address(this), 0.1 ever);
+    }
+
+    function onTokenWallet(address _tokenWallet)
+        external
+        onlyTokenRoot
+        reserveAndRefund(
+            _getTargetBalanceInternal(),
+            _getOwnerInternal(),
+            _getOwnerInternal()
+        )
+    {
+        tokenWallet = _tokenWallet;
+    }
+
+    function batchTransfer(
+        address[] _recipients,
+        uint32 _offset,
+        address _remainingGasTo
+    )
+        external
+        view
+        onlyOwnerOrSelf
+        reserve(_getTargetBalanceInternal())
+    {
+        uint length = _recipients.length;
+
+        uint takeUntil = math.min(_offset + 10, length);
+
+        for (uint i = _offset; i < takeUntil; i++) {
+            _batchTransferInternal(_recipients[i], _remainingGasTo);
+        }
+
+        if (takeUntil < length) {
+            SimpleBatchTip3Airdrop(address(this))
+                .batchTransfer{
+                    value: 0,
+                    flag: MsgFlag.ALL_NOT_RESERVED,
+                    bounce: false
+                }(_recipients, uint32(takeUntil), _remainingGasTo);
+        } else {
+            _remainingGasTo.transfer({
+                value: 0,
+                flag: MsgFlag.ALL_NOT_RESERVED + MsgFlag.IGNORE_ERRORS,
+                bounce: false
+            });
+        }
+    }
+
+    function _batchTransferInternal(address _recipient, address _remainingGasTo) private view {
+        TvmCell empty;
+
+        ITokenWallet(tokenWallet)
+            .transfer{
+                value: 0.12 ever,
+                flag: MsgFlag.SENDER_PAYS_FEES,
+                bounce: true
+            }(
+                AMOUNT_PER_USER,
+                _recipient,
+                0.05 ever,
+                _remainingGasTo,
+                false,
+                empty
+            );
+    }
+
+    function upgrade(
+        TvmCell _code,
+        address _remainingGasTo
+    )
+        external
+        onlyOwner
+        reserve(_getTargetBalanceInternal())
+    {
+        TvmCell data = abi.encode(
+            _remainingGasTo,
+            _getOwnerInternal(),
+            tokenRoot,
+            tokenWallet,
+            _nonce
+        );
+
+        tvm.setcode(_code);
+        tvm.setCurrentCode(_code);
+
+        onCodeUpgrade(data);
+    }
+
+    function onCodeUpgrade(TvmCell _data) private {}
+}

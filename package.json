@@ -1,0 +1,48 @@
+{
+  "name": "everscale-tip3-airdrop",
+  "version": "1.0.0",
+  "repository": "git@github.com:FairyFromAlfeya/everscale-tip3-airdrop.git",
+  "author": "Alexander Kunekov <fairyfromalfeya@gmail.com>",
+  "license": "MIT",
+  "private": false,
+  "scripts": {
+    "prepare": "husky install",
+
+    "format": "prettier --write \"{scripts,test,deploy}/**/*.ts\"",
+    "lint": "eslint \"{scripts,test,deploy}/**/*.ts\" --fix",
+
+    "build": "locklift build",
+    "test": "locklift test --disable-build -n locklift",
+    "deploy": "locklift deploy --disable-build -n locklift",
+    "verify": "locklift verify",
+
+    "send-tokens": "locklift run --disable-build -s scripts/0-send-tokens.ts -n"
+  },
+  "devDependencies": {
+    "@broxus/ever-contracts": "git://github.com/broxus/ever-contracts#1643b6b",
+    "@broxus/locklift-deploy": "1.1.1",
+    "@broxus/locklift-verifier": "1.0.5",
+    "@broxus/tip3": "git://github.com/broxus/tip3",
+    "@types/chai": "4.3.6",
+    "@types/mocha": "10.0.1",
+    "@types/node": "20.7.0",
+    "@types/prompts": "2.4.5",
+    "@typescript-eslint/eslint-plugin": "6.7.3",
+    "@typescript-eslint/parser": "6.7.3",
+    "bignumber.js": "9.1.2",
+    "chai": "4.3.8",
+    "csv-parse": "5.5.6",
+    "dotenv": "16.3.1",
+    "eslint": "8.50.0",
+    "eslint-config-prettier": "9.0.0",
+    "eslint-plugin-prettier": "5.0.0",
+    "husky": "8.0.3",
+    "locklift": "2.9.4",
+    "prettier": "3.0.3",
+    "prompts": "2.4.2",
+    "typescript": "5.2.2"
+  },
+  "resolutions": {
+    "nekoton-wasm": "npm:nekoton-wasm-locklift@1.20.2"
+  }
+}
