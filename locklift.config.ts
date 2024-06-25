@@ -90,7 +90,8 @@ const config: LockliftConfig = {
       },
       giver: {
         address: process.env.MAINNET_GIVER_ADDRESS!,
-        key: process.env.MAINNET_GIVER_KEY!,
+        phrase: process.env.MAINNET_GIVER_PHRASE!,
+        accountId: 0,
       },
       keys: {
         phrase: process.env.MAINNET_PHRASE,

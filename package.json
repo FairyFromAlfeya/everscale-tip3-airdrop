@@ -14,7 +14,7 @@
     "build": "locklift build",
     "test": "locklift test --disable-build -n locklift",
     "deploy": "locklift deploy --disable-build -n locklift",
-    "verify": "locklift verify",
+    "verify": "locklift verify --anon-sources",
 
     "send-tokens": "locklift run --disable-build -s scripts/0-send-tokens.ts -n"
   },

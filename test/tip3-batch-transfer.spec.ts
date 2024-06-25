@@ -66,17 +66,19 @@ describe('Tip3BatchTransfer', () => {
 
       const addresses = await parseCSV('assets/addresses.csv');
 
-      const CHUNK_SIZE = 1000;
+      const CHUNK_SIZE = 500;
 
       for (const recipients of chunkify(addresses, CHUNK_SIZE)) {
         console.log(
-          `Sending: ${recipients[0]} - ${recipients[recipients.length - 1]}`,
+          `Sending: ${recipients[0].recipient} - ${
+            recipients[recipients.length - 1].recipient
+          }`,
         );
 
         const { traceTree } = await locklift.tracing.trace(
           batch.methods
             .batchTransfer({
-              _recipients: recipients,
+              _requests: recipients,
               _offset: 0,
               _remainingGasTo: owner,
             })

@@ -13,11 +13,6 @@ import "@broxus/tip3/contracts/interfaces/ITokenWallet.tsol";
 contract SimpleBatchTip3Airdrop is Ownable {
     uint32 private static _nonce;
 
-    uint8 constant TOKEN_DECIMALS = 9;
-    uint128 constant TOTAL = 50_000_000_000;
-    uint128 constant USERS_COUNT = 32_554;
-    uint128 constant AMOUNT_PER_USER = (TOTAL * uint128(10) ** TOKEN_DECIMALS) / USERS_COUNT;
-
     address public tokenRoot;
     address public tokenWallet;
 
@@ -68,8 +63,13 @@ contract SimpleBatchTip3Airdrop is Ownable {
         tokenWallet = _tokenWallet;
     }
 
+    struct Request {
+        address recipient;
+        uint128 amount;
+    }
+
     function batchTransfer(
-        address[] _recipients,
+        Request[] _requests,
         uint32 _offset,
         address _remainingGasTo
     )
@@ -78,12 +78,12 @@ contract SimpleBatchTip3Airdrop is Ownable {
         onlyOwnerOrSelf
         reserve(_getTargetBalanceInternal())
     {
-        uint length = _recipients.length;
+        uint length = _requests.length;
 
         uint takeUntil = math.min(_offset + 10, length);
 
         for (uint i = _offset; i < takeUntil; i++) {
-            _batchTransferInternal(_recipients[i], _remainingGasTo);
+            _batchTransferInternal(_requests[i], _remainingGasTo);
         }
 
         if (takeUntil < length) {
@@ -92,7 +92,7 @@ contract SimpleBatchTip3Airdrop is Ownable {
                     value: 0,
                     flag: MsgFlag.ALL_NOT_RESERVED,
                     bounce: false
-                }(_recipients, uint32(takeUntil), _remainingGasTo);
+                }(_requests, uint32(takeUntil), _remainingGasTo);
         } else {
             _remainingGasTo.transfer({
                 value: 0,
@@ -102,18 +102,18 @@ contract SimpleBatchTip3Airdrop is Ownable {
         }
     }
 
-    function _batchTransferInternal(address _recipient, address _remainingGasTo) private view {
+    function _batchTransferInternal(Request _request, address _remainingGasTo) private view {
         TvmCell empty;
 
         ITokenWallet(tokenWallet)
             .transfer{
-                value: 0.12 ever,
+                value: 0.2 ever,
                 flag: MsgFlag.SENDER_PAYS_FEES,
                 bounce: true
             }(
-                AMOUNT_PER_USER,
-                _recipient,
-                0.05 ever,
+                _request.amount,
+                _request.recipient,
+                0.1 ever,
                 _remainingGasTo,
                 false,
                 empty
@@ -142,5 +142,32 @@ contract SimpleBatchTip3Airdrop is Ownable {
         onCodeUpgrade(data);
     }
 
-    function onCodeUpgrade(TvmCell _data) private {}
+    function onCodeUpgrade(TvmCell _data) private {
+        tvm.resetStorage();
+
+        address remainingGasTo;
+        address owner;
+
+        (
+            remainingGasTo,
+            owner,
+            tokenRoot,
+            tokenWallet,
+            _nonce
+        ) = abi.decode(_data, (
+            address,
+            address,
+            address,
+            address,
+            uint32
+        ));
+
+        _setOwnerSilent(owner);
+
+        remainingGasTo.transfer({
+            value: 0,
+            flag: MsgFlag.ALL_NOT_RESERVED + MsgFlag.IGNORE_ERRORS,
+            bounce: false
+        });
+    }
 }
